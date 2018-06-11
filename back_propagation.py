@@ -7,9 +7,9 @@ def back_propagation(A: array, W: array, Y: array):
     # W : weights matrix
 
     bias = 0
-    epochs = 150
-    initial_learning_rate = 0.001
-    final_learning_rate = 0.0005
+    epochs = 1000
+    initial_learning_rate = 0.1
+    final_learning_rate = 0.001
     for epoch in range(epochs):
         learning_rate = initial_learning_rate * pow(final_learning_rate / initial_learning_rate, epoch / epochs)
         for i in range(len(A)):

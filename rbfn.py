@@ -1,23 +1,23 @@
 import numpy as np
 from scipy.cluster.vq import kmeans
 from back_propagation import back_propagation
+from scipy.spatial.distance import euclidean
 
 
 class rbfn:
-    def __init__(self, input_size, output_size, centers_count,
+    def __init__(self, input_size, centers_count,
                  center_assignation: str = "random",
                  weight_update: str = "pinv"):
         self.input_size = input_size
-        self.output_size = output_size
         self.centers_count = centers_count
 
         self.centers = np.zeros(self.centers_count)
-        self.weights = np.random.rand(centers_count, output_size) * 2 - 1
+        self.weights = np.random.rand(centers_count, 1) * 2 - 1
 
         self.center_assignation = center_assignation
         self.weight_update = weight_update
 
-        self.beta = - 10
+        self.beta = - 0.001
         self.bias = 0
 
     def _rb_function(self, centers, x):
@@ -40,19 +40,18 @@ class rbfn:
             self.centers = kmeans(X, self.centers_count, iter=15)[0]
 
     def _fit_centers_positions(self, X):
-        initial_coef = 0.001
-        final_coef = 0.0001
+        initial_coef = 0.01
+        final_coef = 0.001
 
-        epochs = 20
+        epochs = 10
 
         for epoch in range(epochs):
             change_rate = (initial_coef + epoch / epochs * (final_coef - initial_coef))
             for x in X:
                 closest_centre = self.centers[0]
-
-                smallest_dist = np.linalg.norm(closest_centre, x)
+                smallest_dist = euclidean(closest_centre, x)
                 for c in self.centers:
-                    tmp_dist = np.linalg.norm(c, x)
+                    tmp_dist = euclidean(c, x)
                     if tmp_dist < smallest_dist:
                         smallest_dist = tmp_dist
                         closest_centre = c
@@ -76,5 +75,5 @@ class rbfn:
 
     def test(self, X):
         A = self._calculate_activations(X)
-
+        # print(np.dot(A, self.weights) + self.bias)
         return np.dot(A, self.weights) + self.bias
