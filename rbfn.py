@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.cluster.vq import vq, kmeans, whiten
+from scipy.cluster.vq import kmeans
 from back_propagation import back_propagation
 
 
@@ -18,6 +18,7 @@ class rbfn:
         self.weight_update = weight_update
 
         self.beta = - 10
+        self.bias = 0
 
     def _rb_function(self, centers, x):
         return np.exp(self.beta * np.linalg.norm(centers - x) ** 2)
@@ -33,25 +34,47 @@ class rbfn:
 
     def _assign_centers(self, X):
         if self.center_assignation == "random":
-            rnd_idx = np.random.permutation(X.shape[0])[:self.centers_count]
-            self.centers = [X[i, :] for i in rnd_idx]
-            return
+            rnd_idx = np.random.permutation(len(X))[:self.centers_count]
+            self.centers = np.array([X[i, :] for i in rnd_idx])
+        elif self.center_assignation == "kmeans":
+            self.centers = kmeans(X, self.centers_count, iter=15)[0]
 
-        if self.center_assignation == "kmeans":
-            pass
-            # TODO implement k means center assignation
+    def _fit_centers_positions(self, X):
+        initial_coef = 0.001
+        final_coef = 0.0001
+
+        epochs = 20
+
+        for epoch in range(epochs):
+            change_rate = (initial_coef + epoch / epochs * (final_coef - initial_coef))
+            for x in X:
+                closest_centre = self.centers[0]
+
+                smallest_dist = np.linalg.norm(closest_centre, x)
+                for c in self.centers:
+                    tmp_dist = np.linalg.norm(c, x)
+                    if tmp_dist < smallest_dist:
+                        smallest_dist = tmp_dist
+                        closest_centre = c
+                change_vector = (x - closest_centre) * change_rate
+                closest_centre += change_vector
 
     def _update_weights(self, A, Y):
         if self.weight_update == "pinv":
-            self.weights = np.dot(np.linalg.pinv(A), Y)
+            self.weights = np.linalg.pinv(A).dot(Y)
         elif self.weight_update == "backprop":
-            self.weights = back_propagation(A, self.weights, Y)
+            self.weights, self.bias = back_propagation(A, self.weights, Y)
+        elif self.weight_update == "pinv + backprop":
+            self.weights = np.dot(np.linalg.pinv(A), Y)
+            self.weights, self.bias = back_propagation(A, self.weights, Y)
 
     def train(self, X, Y):
         self._assign_centers(X)
+        self._fit_centers_positions(X)
         A = self._calculate_activations(X)
         self._update_weights(A, Y)
 
     def test(self, X):
         A = self._calculate_activations(X)
-        return np.dot(A, self.weights)
+
+        return np.dot(A, self.weights) + self.bias
